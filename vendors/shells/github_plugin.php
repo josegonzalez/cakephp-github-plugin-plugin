@@ -43,7 +43,7 @@ class GithubPluginShell extends Shell {
 	 * @author Jose Diaz-Gonzalez
 	 */
 	function __run() {
-		$validCommands = array('l', 'v', 's', 'i', 'p', 'u', 'q');
+		$validCommands = array('l', 'v', 's', 'g', 'z', 'p', 'u', 'q');
 
 		while (empty($this->command)) {
 			$this->out("Github Plugin Server");
@@ -51,7 +51,8 @@ class GithubPluginShell extends Shell {
 			$this->out("[L]ist Installed Plugins");
 			$this->out("[V]iew Available Plugins");
 			$this->out("[S]earch Available Plugins");
-			$this->out("[I]nstall Plugin as Submodule or from Zip");
+			$this->out("[G]it Install Plugin as Submodule");
+			$this->out("[Z]ip Install Plugin from an archive");
 			$this->out("[P]ull all Plugin Submodule Updates");
 			$this->out("[U]pdate a specific Plugin Submodule");
 			$this->out("[Q]uit");
@@ -73,8 +74,11 @@ class GithubPluginShell extends Shell {
 			case 's' :
 				$this->__doSearch();
 				break;
-			case 'i' :
-				$this->__doInstall();
+			case 'g' :
+				$this->__doSubmoduleInstall();
+				break;
+			case 'z' :
+				$this->__doZipInstall();
 				break;
 			case 'p' :
 				$this->__doPull();
@@ -160,7 +164,7 @@ class GithubPluginShell extends Shell {
 	 * @return void
 	 * @author Jose Diaz-Gonzalez
 	 */
-	function __doInstall() {
+	function __doGitInstall() {
 		$validCommands = array();
 		$availablePlugins = $this->__listServerPlugins();
 
@@ -205,21 +209,103 @@ class GithubPluginShell extends Shell {
 						// See if there are any special paths for this plugin
 						$pluginRelativePath = $this->in(__("What is the relative path of the plugin folder in respect to the toplevel of the working tree? Include the directory of the plugins folder, and leave off the beginning and trailing slash."), null, '');
 						if ($pluginRelativePath !== null) {
-							$this->out("Adding Submodule...");
+							$this->out("Adding Plugin Submodule to {$topLevelDirectory}/{$pluginRelativePath}/{$pluginName}...");
 							$this->out(shell_exec("cd {$topLevelDirectory} ; git submodule add {$repoURL} {$pluginRelativePath}/{$pluginName}"));
-							$this->out("Initializing Submodule...");
+							$this->out("Initializing Plugin Submodule...");
 							$this->out(shell_exec("cd {$topLevelDirectory} ; git submodule init"));
-							$this->out("Updating Submodule...");
+							$this->out("Updating Plugin Submodule...");
 							$this->out(shell_exec("cd {$topLevelDirectory} ; git submodule update"));
 						}
 					} else {
-						$this->out("Adding Submodule...");
+						$this->out("Adding Plugin Submodule to plugins/{$pluginName}...");
 						$this->out(shell_exec("git submodule add {$repoURL} plugins/{$pluginName}"));
-						$this->out("Initializing Submodule...");
+						$this->out("Initializing Plugin Submodule...");
 						$this->out(shell_exec("git submodule init"));
-						$this->out("Updating Submodule...");
+						$this->out("Updating Plugin Submodule...");
 						$this->out(shell_exec("git submodule update"));
 					}
+				}
+			} else {
+				$enteredPlugin = null;
+			}
+		}
+	}
+
+	/**
+	 * Install a function from github using git
+	 *
+	 * @return void
+	 * @author Jose Diaz-Gonzalez
+	 */
+	function __doZipInstall() {
+		$validCommands = array();
+		$availablePlugins = $this->__listServerPlugins();
+
+		foreach ($availablePlugins as $key => $plugin) {
+			$name = str_replace('-', '_', $plugin['name']);
+			$name = Inflector::humanize($name);
+			if (substr_count($name, 'Plugin') > 0) {
+				$name = substr_replace($name, '', strrpos($name, ' Plugin'), strlen(' Plugin'));
+			}
+			$this->out($key+1 . ". {$name} Plugin");
+			$validCommands[] = $key+1;
+		}
+
+		$validCommands[] = 'q';
+		$enteredPlugin = null;
+
+		while ($enteredPlugin === null) {
+			$enteredPlugin = $this->in(__("Enter a number from the list above  or 'q' or nothing to exit", true), null, 'q');
+
+			if ($enteredPlugin === 'q') {
+				$this->out(__("Exit", true));
+				$this->_stop();
+			} elseif (in_array($enteredPlugin, $validCommands)) {
+				// So now we actually have to install this plugin...
+
+				// Find the original Repository if possible
+				$this->out("Fetching the Repository Zip URL...");
+				$zipURL = $this->__findZipURL($availablePlugins[$enteredPlugin-1]['name']);
+				$this->out("Repository Zip URL is {$zipURL}");
+				// Get the name under which the user would like to place this plugin
+				$pluginName = $this->in(__("Enter a name for this plugin or 'q' to exit", true), null, 'q');
+				
+				if ($pluginName === 'q') {
+					$this->out(__("Exit", true));
+					$this->_stop();
+				} else {
+
+					$this->out("\nFetching plugin package...");
+					$data = $this->Socket->get($zipURL);
+
+					$this->out("Done.");
+					debug($data);die;
+					$files = explode($this->fileDelimiter, $data);
+
+					if(count($files) < 1) {
+						$this->out("There seems to be a problem with the plugin package you selected. Please try again later.");
+						die();
+					}
+
+					$this->out("");
+
+					foreach($files as $file) {
+						$parts = explode($this->metaDelimiter, $file);
+						if(count($parts) < 2) {
+							continue;
+						}
+
+						$path = trim(APP . 'plugins' . DS . $selectedPluginName . $parts[0]);
+						$this->out("Writing: $path");
+
+						$newFolder = new Folder();
+						$newFolder->create(dirname($path));
+
+						$newFile = new File($path);
+						$newFile->write($parts[1]);
+					}
+
+					$this->out("\nDone.\n");
 				}
 			} else {
 				$enteredPlugin = null;
@@ -318,17 +404,93 @@ class GithubPluginShell extends Shell {
 	 **/
 	function __findOriginalRepository($repositoryName) {
 		$githubServer = "http://github.com/api/v2/xml/";
-		$githubUser = 'cakephp-plugin-provider';
+		$maintainer = 'cakephp-plugin-provider';
 		$xmlResponse = new Xml(
 			$this->Socket->get(
-				"{$githubServer}repos/show/{$githubUser}/{$repositoryName}/network"));
+				"{$githubServer}repos/show/{$maintainer}/{$repositoryName}/network"));
 		$arrayResponse = Set::reverse($xmlResponse);
 		foreach ($arrayResponse['Network']['Network'] as $repository) {
 			if ($repository['fork']['value'] === 'false') {
-				return "git://github.com/" . $repository['owner'] . "/" . $repository['name'] . ".git";
+				$maintainer = $repository['owner'];
+				$repositoryName = $repository['name'];
+				break;
 			}
 		}
 		return "git://github.com/{$githubUser}/{$repositoryName}.git";
+	}
+
+/**
+ * Returns the url of the zip containing the latest repository commit
+ *
+ * @return string
+ * @author Jose Diaz-Gonzalez
+ **/
+	function __findZipURL($repositoryName) {
+		$githubServer = 'http://github.com/api/v2/xml/';
+		$maintainer = 'cakephp-plugin-provider';
+
+		$xmlResponse = new Xml(
+			$this->Socket->get(
+				"{$githubServer}repos/show/{$maintainer}/{$repositoryName}/network"));
+		$arrayResponse = Set::reverse($xmlResponse);
+
+		foreach ($arrayResponse['Network']['Network'] as $repository) {
+			if ($repository['fork']['value'] === 'false') {
+				$maintainer = $repository['owner'];
+				$repositoryName = $repository['name'];
+				break;
+			}
+		}
+
+		$link = "http://github.com/{$maintainer}/{$repositoryName}/zipball/master";
+
+		$branches = $this->__findBranches($githubServer, $maintainer, $repositoryName, true);
+
+		if($branches['master']) {
+			$useBranch = $branches['hash']['master'];
+		} else {
+			// Lets just use the first branch available
+			$branchKey = $branches['branches'][0];
+			$useBranch = $branches['hash'][$branchKey];
+		}
+
+		// The following might need to be downloaded via the socket class in order to ensure that the zip is created
+		// $zipLink = "http://waitdownload.github.com/{$maintainer}-{$repositoryName}-{$useBranch}.zip";
+		$zipLink = "http://download.github.com/{$maintainer}-{$repositoryName}-{$useBranch}.zip";
+		return $zipLink;
+	}
+	
+/**
+ * Returns an array of containing an array of all the branch names
+ * and an array containing the latest branch commit hash
+ * as well as whether a master branch exists
+ *
+ * @param string $maintainer
+ * @param string $repositoryName
+ * @return array
+ * @author Jose Diaz-Gonzalez
+ **/
+	function __findBranches($server, $maintainer, $repositoryName, $master = false) {
+		$xmlResponse = new Xml(
+			$this->Socket->get(
+				"{$server}repos/show/{$maintainer}/{$repositoryName}/branches"));
+		$arrayResponse = Set::reverse($xmlResponse);
+
+		$response = array();
+		$response['branches'] = array_keys($arrayResponse['Branches']);
+		$response['hash'] = $arrayResponse['Branches'];
+		$response['master'] = false;
+
+		if ($master) {
+			foreach ($response['branches'] as $branch) {
+				if ($branch == 'master') {
+					$response['master'] = true;
+					break;
+				}
+			}
+		}
+
+		return $response;
 	}
 }
 ?>

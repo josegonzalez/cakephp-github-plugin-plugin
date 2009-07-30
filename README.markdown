@@ -2,7 +2,7 @@ This plugin provides an easy way to install plugins from a github account (prede
 
 ## Requirements
 - the function "shell_exec()" must be enabled on the server
-- git must be installed and configured on the server
+- git must be installed and configured on the server in order to use the git functionality (you can still install plugins from archives!)
 
 ## Installation
 - Clone from github : in your plugin directory type `git clone git://github.com/josegonzalez/commentable-behavior.git github_plugin`
@@ -38,3 +38,4 @@ In command-line, run "cake github_plugin" and follow the prompts
 - Interface with the thoughtglade plugin server
 - Provide the ability to archive all plugins at will
 - Retain metadata for each plugin in it's installation folder
+- SVN Functionality

@@ -112,7 +112,12 @@ class GithubPluginShell extends Shell {
 		$this->out("\nThis is a list of currently active plugins on the server.");
 		$availablePlugins = $this->__listServerPlugins();
 		foreach ($availablePlugins as $key => $plugin) {
-			$this->out($key+1 . ". " . $plugin['name'] . " Plugin");
+			$name = str_replace('-', '_', $plugin['name']);
+			$name = Inflector::humanize($name);
+			if (substr_count($name, 'Plugin') > 0) {
+				$name = substr_replace($name, '', strrpos($name, ' Plugin'), strlen(' Plugin'));
+			}
+			$this->out($key+1 . ". {$name} Plugin");
 		}
 	}
 
@@ -160,7 +165,12 @@ class GithubPluginShell extends Shell {
 		$availablePlugins = $this->__listServerPlugins();
 
 		foreach ($availablePlugins as $key => $plugin) {
-			$this->out($key+1 . ". " . Inflector::humanize($plugin['name']) . " Plugin");
+			$name = str_replace('-', '_', $plugin['name']);
+			$name = Inflector::humanize($name);
+			if (substr_count($name, 'Plugin') > 0) {
+				$name = substr_replace($name, '', strrpos($name, ' Plugin'), strlen(' Plugin'));
+			}
+			$this->out($key+1 . ". {$name} Plugin");
 			$validCommands[] = $key+1;
 		}
 

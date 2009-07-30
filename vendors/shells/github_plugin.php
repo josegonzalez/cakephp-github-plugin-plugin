@@ -43,7 +43,7 @@ class PlugShell extends Shell {
 	 * @author Jose Diaz-Gonzalez
 	 */
 	function __run() {
-		$validCommands = array('l', 'v', 'i', 'p', 'q');
+		$validCommands = array('l', 'v', 'i', 'p', 'u', 'q');
 
 		while (empty($this->command)) {
 			$this->out("Github Plugin Server");
@@ -52,6 +52,7 @@ class PlugShell extends Shell {
 			$this->out("[V]iew Available Plugins");
 			$this->out("[I]nstall Plugin as Submodule or from Zip");
 			$this->out("[P]ull all Plugin Submodule Updates");
+			$this->out("[U]pdate a specific Plugin Submodule");
 			$this->out("[Q]uit");
 			$temp = $this->in("What command would you like to perform?", $validCommands, 'i');
 			if (in_array(strtolower($temp), $validCommands)) {
@@ -73,6 +74,9 @@ class PlugShell extends Shell {
 				break;
 			case 'p' :
 				$this->__doPull();
+				break;
+			case 'u' :
+				$this->__doUpdate();
 				break;
 			case 'q' :
 				$this->out(__("Exit", true));
@@ -116,17 +120,18 @@ class PlugShell extends Shell {
 	function __doInstall() {
 		$validCommands = array();
 		$availablePlugins = $this->__listServerPlugins();
-		
+
 		foreach ($availablePlugins as $key => $plugin) {
 			$this->out($key+1 . ". " . Inflector::humanize($plugin['name']) . " Plugin");
 			$validCommands[] = $key+1;
 		}
-		
+
 		$validCommands[] = 'q';
 		$enteredPlugin = null;
-		
+
 		while ($enteredPlugin === null) {
 			$enteredPlugin = $this->in(__("Enter a number from the list above  or 'q' or nothing to exit", true), null, 'q');
+
 			if ($enteredPlugin === 'q') {
 				$this->out(__("Exit", true));
 				$this->_stop();
@@ -134,15 +139,22 @@ class PlugShell extends Shell {
 				// So now we actually have to install this plugin...
 				// Lets construct the repoURL
 				$repoURL = "git://github.com/" . $availablePlugins[$enteredPlugin-1]['owner'] . "/" . $availablePlugins[$enteredPlugin-1]['name'] . ".git";
+				
 				// Get the name under which the user would like to place this plugin
 				$pluginName = $this->in(__("Enter a name for this plugin or 'q' to exit", true), null, 'q');
+				
 				if ($pluginName === 'q') {
 					$this->out(__("Exit", true));
 					$this->_stop();
 				} else {
+
+					// Check if this app isn't the root of the git project
 					$topLevelDirectory = $this->in(__("If you aren't running this from the toplevel of the working tree, specify the full toplevel path. Press enter if this is the toplevel."), null, '');
+
 					if ($topLevelDirectory !== null) {
-						$pluginRelativePath = $this->in(__("What is the relative path of the plugin folder? Include the directory of the plugins folder, and leave off the beginning and trailing slash."), null, '');
+
+						// See if there are any special paths for this plugin
+						$pluginRelativePath = $this->in(__("What is the relative path of the plugin folder in respect to the toplevel of the working tree? Include the directory of the plugins folder, and leave off the beginning and trailing slash."), null, '');
 						if ($pluginRelativePath !== null) {
 							$this->out("Adding Submodule...");
 							$this->out(shell_exec("cd {$topLevelDirectory} ; git submodule add {$repoURL} {$pluginRelativePath}/{$pluginName}"));
@@ -173,13 +185,8 @@ class PlugShell extends Shell {
 	 * @author Jose Diaz-Gonzalez
 	 **/
 	function __doPull() {
-		$this->out("\nUpdating the following list of plugins...\n");
+		$this->out("\nUpdating submodules...\n");
 		$installedPlugins = $this->__listPlugins();
-		foreach ($installedPlugins as $key => $plugin) {
-			$this->out(" " . $key+1 . ". " . Inflector::humanize($plugin) . " Plugin");
-		}
-
-		$this->out("");
 
 		foreach ($installedPlugins as $key => $plugin) {
 			$this->out(Inflector::humanize($plugin) . " Plugin");
@@ -187,6 +194,43 @@ class PlugShell extends Shell {
 			$this->out(shell_exec("cd " . $this->params['working'] . "/plugins/{$installedPlugins[$key]} ; git merge origin/master "));
 		}
 		$this->out("Remember to commit all wanted changes.");
+	}
+
+	/**
+	 * Pull the update for a specific plugin submodule
+	 *
+	 * @return void
+	 * @author Jose Diaz-Gonzalez
+	 **/
+	function __doUpdate() {
+		$this->out("\nThe following is a list of all installed submodules");
+
+		$validCommands = array();
+		$installedPlugins = $this->__listPlugins();
+		foreach ($installedPlugins as $key => $plugin) {
+			$this->out(" " . $key+1 . ". " . Inflector::humanize($plugin) . " Plugin");
+			$validCommands[] = $key+1;
+		}
+
+		$validCommands[] = 'q';
+		$enteredPlugin = null;
+
+		while ($enteredPlugin === null) {
+			$enteredPlugin = $this->in(__("Enter a number from the list above  or 'q' or nothing to exit", true), null, 'q');
+			
+			if ($enteredPlugin === 'q') {
+				// Quit
+				$this->out(__("Exit", true));
+				$this->_stop();
+			} elseif (in_array($enteredPlugin, $validCommands)) {
+				// cd into the plugins directory and update it
+				$this->out(Inflector::humanize($plugin) . " Plugin");
+				$this->out(shell_exec("cd " . $this->params['working'] . "/plugins/{$installedPlugins[$enteredPlugin-1]} ; git remote update "));
+				$this->out(shell_exec("cd " . $this->params['working'] . "/plugins/{$installedPlugins[$enteredPlugin-1]} ; git merge origin/master "));
+			} else {
+				$enteredPlugin = null;
+			}
+		}
 	}
 
 	/**

@@ -6,7 +6,7 @@ App::import(array('HttpSocket', 'File', 'Xml'));
  *
  * @package default
  */
-class GithubPluginShell extends Shell {
+class PlugShell extends Shell {
 
 	/**
 	 * HttpSocket instance.
@@ -164,6 +164,29 @@ class GithubPluginShell extends Shell {
 				$enteredPlugin = null;
 			}
 		}
+	}
+
+	/**
+	 * Pull the updates for all plugin submodules
+	 *
+	 * @return void
+	 * @author Jose Diaz-Gonzalez
+	 **/
+	function __doPull() {
+		$this->out("\nUpdating the following list of plugins...\n");
+		$installedPlugins = $this->__listPlugins();
+		foreach ($installedPlugins as $key => $plugin) {
+			$this->out(" " . $key+1 . ". " . Inflector::humanize($plugin) . " Plugin");
+		}
+
+		$this->out("");
+
+		foreach ($installedPlugins as $key => $plugin) {
+			$this->out(Inflector::humanize($plugin) . " Plugin");
+			$this->out(shell_exec("cd " . $this->params['working'] . "/plugins/{$installedPlugins[$key]} ; git remote update "));
+			$this->out(shell_exec("cd " . $this->params['working'] . "/plugins/{$installedPlugins[$key]} ; git merge origin/master "));
+		}
+		$this->out("Remember to commit all wanted changes.");
 	}
 
 	/**

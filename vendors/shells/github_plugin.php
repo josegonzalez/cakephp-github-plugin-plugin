@@ -6,7 +6,7 @@ App::import(array('HttpSocket', 'File', 'Xml'));
  *
  * @package default
  */
-class PlugShell extends Shell {
+class GithubPluginShell extends Shell {
 
 	/**
 	 * HttpSocket instance.
@@ -43,13 +43,14 @@ class PlugShell extends Shell {
 	 * @author Jose Diaz-Gonzalez
 	 */
 	function __run() {
-		$validCommands = array('l', 'v', 'i', 'p', 'u', 'q');
+		$validCommands = array('l', 'v', 's', 'i', 'p', 'u', 'q');
 
 		while (empty($this->command)) {
 			$this->out("Github Plugin Server");
 			$this->out("---------------------------------------------------------------");
 			$this->out("[L]ist Installed Plugins");
 			$this->out("[V]iew Available Plugins");
+			$this->out("[S]earch Available Plugins");
 			$this->out("[I]nstall Plugin as Submodule or from Zip");
 			$this->out("[P]ull all Plugin Submodule Updates");
 			$this->out("[U]pdate a specific Plugin Submodule");
@@ -68,6 +69,9 @@ class PlugShell extends Shell {
 				break;
 			case 'v' :
 				$this->__doView();
+				break;
+			case 's' :
+				$this->__doSearch();
 				break;
 			case 'i' :
 				$this->__doInstall();
@@ -106,8 +110,42 @@ class PlugShell extends Shell {
 	 */
 	function __doView() {
 		$this->out("\nThis is a list of currently active plugins on the server.");
-		foreach ($this->__listServerPlugins() as $key => $plugin) {
+		$availablePlugins = $this->__listServerPlugins();
+		foreach ($availablePlugins as $key => $plugin) {
 			$this->out($key+1 . ". " . $plugin['name'] . " Plugin");
+		}
+	}
+
+	/**
+	 * Search all available plugins
+	 *
+	 * @return void
+	 * @author Jose Diaz-Gonzalez
+	 **/
+	function __doSearch() {
+		$query = $this->in(__("Enter a search term or 'q' or nothing to exit", true), null, 'q');
+		$this->out("Grabbing all plugins...");
+		$availablePlugins = $this->__listServerPlugins();
+
+		$this->out("Searching all plugins for query...");
+		$results = array();
+		foreach ($availablePlugins as $plugin) {
+			if ((stristr($plugin['name'], $query) !== false) or (stristr($plugin['description'], $query) !== false)) {
+				$results[] = $plugin;
+			}
+		}
+		
+		if (empty($results)) {
+			$this->out("No results found. Sorry.");
+		} else {
+			foreach ($results as $key => $result) {
+				$name = str_replace('-', '_', $result['name']);
+				$name = Inflector::humanize($name);
+				if (substr_count($name, 'Plugin') > 0) {
+					$name = substr_replace($name, '', strrpos($name, ' Plugin'), strlen(' Plugin'));
+				}
+				$this->out($key+1 . ". {$name} Plugin");
+			}
 		}
 	}
 

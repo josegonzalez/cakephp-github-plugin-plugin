@@ -185,9 +185,10 @@ class GithubPluginShell extends Shell {
 				$this->_stop();
 			} elseif (in_array($enteredPlugin, $validCommands)) {
 				// So now we actually have to install this plugin...
-				// Lets construct the repoURL
-				$repoURL = "git://github.com/" . $availablePlugins[$enteredPlugin-1]['owner'] . "/" . $availablePlugins[$enteredPlugin-1]['name'] . ".git";
-				
+
+				// Find the original Repository if possible
+				$repoURL = $this->__findOriginalRepository($availablePlugins[$enteredPlugin-1]['name']);
+
 				// Get the name under which the user would like to place this plugin
 				$pluginName = $this->in(__("Enter a name for this plugin or 'q' to exit", true), null, 'q');
 				
@@ -307,6 +308,27 @@ class GithubPluginShell extends Shell {
 				$githubServer . 'repos/show/' . $githubUser));
 		$arrayResponse = Set::reverse($xmlResponse);
 		return $arrayResponse['Repositories']['Repository'];
+	}
+
+	/**
+	 * Returns the url of the original repository
+	 *
+	 * @return string
+	 * @author Jose Diaz-Gonzalez
+	 **/
+	function __findOriginalRepository($repositoryName) {
+		$githubServer = "http://github.com/api/v2/xml/";
+		$githubUser = 'cakephp-plugin-provider';
+		$xmlResponse = new Xml(
+			$this->Socket->get(
+				"{$githubServer}repos/show/{$githubUser}/{$repositoryName}/network"));
+		$arrayResponse = Set::reverse($xmlResponse);
+		foreach ($arrayResponse['Network']['Network'] as $repository) {
+			if ($repository['fork']['value'] === 'false') {
+				return "git://github.com/" . $repository['owner'] . "/" . $repository['name'] . ".git";
+			}
+		}
+		return "git://github.com/{$githubUser}/{$repositoryName}.git";
 	}
 }
 ?>

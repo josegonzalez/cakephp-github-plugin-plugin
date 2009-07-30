@@ -1,6 +1,5 @@
 <?php
-
-App::import(array('HttpSocket', 'File', 'Xml'));
+App::import(array('HttpSocket', 'File', 'Folder', 'Xml'));
 /**
  * Github Plugin management shell.
  *
@@ -8,18 +7,18 @@ App::import(array('HttpSocket', 'File', 'Xml'));
  */
 class GithubPluginShell extends Shell {
 
-	/**
-	 * HttpSocket instance.
-	 * @var string
-	 */
+/**
+ * HttpSocket instance.
+ * @var string
+ */
 	var $Socket = null;
 
-	/**
-	 * Main shell logic.
-	 *
-	 * @return void
-	 * @author John David Anderson
-	 */
+/**
+ * Main shell logic.
+ *
+ * @return void
+ * @author John David Anderson
+ */
 	function main() {
 
 		if(isset($this->params['server'])) {
@@ -36,12 +35,12 @@ class GithubPluginShell extends Shell {
 		$this->__run();
 	}
 
-	/**
-	 * Main application flow control.
-	 *
-	 * @return void
-	 * @author Jose Diaz-Gonzalez
-	 */
+/**
+ * Main application flow control.
+ *
+ * @return void
+ * @author Jose Diaz-Gonzalez
+ */
 	function __run() {
 		$validCommands = array('l', 'v', 's', 'g', 'z', 'p', 'u', 'q');
 
@@ -93,12 +92,12 @@ class GithubPluginShell extends Shell {
 		}
 	}
 
-	/**
-	 * List all the plugins installed
-	 *
-	 * @return void
-	 * @author Jose Diaz-Gonzalez
-	 */
+/**
+ * List all the plugins installed
+ *
+ * @return void
+ * @author Jose Diaz-Gonzalez
+ */
 	function __doList() {
 		$this->out("\nThis is a list of currently installed plugins in your application.");
 		foreach ($this->__listPlugins() as $key => $plugin) {
@@ -106,12 +105,12 @@ class GithubPluginShell extends Shell {
 		}
 	}
 
-	/**
-	 * View all available plugins
-	 *
-	 * @return void
-	 * @author Jose Diaz-Gonzalez
-	 */
+/**
+ * View all available plugins
+ *
+ * @return void
+ * @author Jose Diaz-Gonzalez
+ */
 	function __doView() {
 		$this->out("\nThis is a list of currently active plugins on the server.");
 		$availablePlugins = $this->__listServerPlugins();
@@ -125,12 +124,12 @@ class GithubPluginShell extends Shell {
 		}
 	}
 
-	/**
-	 * Search all available plugins
-	 *
-	 * @return void
-	 * @author Jose Diaz-Gonzalez
-	 **/
+/**
+ * Search all available plugins
+ *
+ * @return void
+ * @author Jose Diaz-Gonzalez
+ **/
 	function __doSearch() {
 		$query = $this->in(__("Enter a search term or 'q' or nothing to exit", true), null, 'q');
 		$this->out("Grabbing all plugins...");
@@ -158,12 +157,12 @@ class GithubPluginShell extends Shell {
 		}
 	}
 
-	/**
-	 * Install a function from github using git
-	 *
-	 * @return void
-	 * @author Jose Diaz-Gonzalez
-	 */
+/**
+ * Install a function from github using git
+ *
+ * @return void
+ * @author Jose Diaz-Gonzalez
+ */
 	function __doGitInstall() {
 		$validCommands = array();
 		$availablePlugins = $this->__listServerPlugins();
@@ -231,14 +230,19 @@ class GithubPluginShell extends Shell {
 		}
 	}
 
-	/**
-	 * Install a function from github using git
-	 *
-	 * @return void
-	 * @author Jose Diaz-Gonzalez
-	 */
+/**
+ * Install a function from github using git
+ *
+ * @return void
+ * @author Jose Diaz-Gonzalez
+ */
 	function __doZipInstall() {
 		$validCommands = array();
+
+		// Make sure the temporary plugin folder exists
+		$this->__checkPluginFolder();
+
+		$this->out("Fetching list of all Plugins...");
 		$availablePlugins = $this->__listServerPlugins();
 
 		foreach ($availablePlugins as $key => $plugin) {
@@ -265,8 +269,12 @@ class GithubPluginShell extends Shell {
 
 				// Find the original Repository if possible
 				$this->out("Fetching the Repository Zip URL...");
-				$zipURL = $this->__findZipURL($availablePlugins[$enteredPlugin-1]['name']);
-				$this->out("Repository Zip URL is {$zipURL}");
+				$response = $this->__findZipURL($availablePlugins[$enteredPlugin-1]['name']);
+				$repoPath = $response['maintainer'] . '-' . $response['repositoryName'] . '-' . $response['useBranch'];
+				$zipURL = $response['download'];
+				
+				
+				$this->out("\nRepository Zip URL is {$zipURL}");
 				// Get the name under which the user would like to place this plugin
 				$pluginName = $this->in(__("Enter a name for this plugin or 'q' to exit", true), null, 'q');
 				
@@ -278,32 +286,26 @@ class GithubPluginShell extends Shell {
 					$this->out("\nFetching plugin package...");
 					$data = $this->Socket->get($zipURL);
 
-					$this->out("Done.");
-					debug($data);die;
-					$files = explode($this->fileDelimiter, $data);
+					$tempZipPath = trim(TMP . DS . 'plugins' . DS . $pluginName . '.zip');
+					$tempRepoPath = trim(TMP . DS . 'plugins' . DS . $repoPath);
+					$installPath = trim(APP . 'plugins');
 
-					if(count($files) < 1) {
-						$this->out("There seems to be a problem with the plugin package you selected. Please try again later.");
-						die();
+					$zipHandler = new File($tempZipPath);
+					$this->out("\nZip Downloaded to {$tempZipPath}");
+					$zipHandler->write($data);
+
+					App::import('Vendor', 'GithubPlugins.PclzipLib', array('file' => 'pclzip' . DS . 'pclzip.lib.php'));
+					$archive = new PclZip($tempZipPath);
+					$this->out("Writing {$installPath} from {$tempZipPath}...");
+					if (($v_result_list = $archive->extract(
+							PCLZIP_OPT_PATH, $installPath,
+							PCLZIP_OPT_REMOVE_PATH, $repoPath,
+							PCLZIP_OPT_ADD_PATH, $pluginName)) == 0) {
+						die("Error : ".$archive->errorInfo(true));
 					}
 
-					$this->out("");
-
-					foreach($files as $file) {
-						$parts = explode($this->metaDelimiter, $file);
-						if(count($parts) < 2) {
-							continue;
-						}
-
-						$path = trim(APP . 'plugins' . DS . $selectedPluginName . $parts[0]);
-						$this->out("Writing: $path");
-
-						$newFolder = new Folder();
-						$newFolder->create(dirname($path));
-
-						$newFile = new File($path);
-						$newFile->write($parts[1]);
-					}
+					$tempHandler = new Folder();
+					$tempHandler->delete($tempRepoPath);
 
 					$this->out("\nDone.\n");
 				}
@@ -313,12 +315,12 @@ class GithubPluginShell extends Shell {
 		}
 	}
 
-	/**
-	 * Pull the updates for all plugin submodules
-	 *
-	 * @return void
-	 * @author Jose Diaz-Gonzalez
-	 **/
+/**
+ * Pull the updates for all plugin submodules
+ *
+ * @return void
+ * @author Jose Diaz-Gonzalez
+ **/
 	function __doPull() {
 		$this->out("\nUpdating submodules...\n");
 		$installedPlugins = $this->__listPlugins();
@@ -331,12 +333,12 @@ class GithubPluginShell extends Shell {
 		$this->out("Remember to commit all wanted changes.");
 	}
 
-	/**
-	 * Pull the update for a specific plugin submodule
-	 *
-	 * @return void
-	 * @author Jose Diaz-Gonzalez
-	 **/
+/**
+ * Pull the update for a specific plugin submodule
+ *
+ * @return void
+ * @author Jose Diaz-Gonzalez
+ **/
 	function __doUpdate() {
 		$this->out("\nThe following is a list of all installed submodules");
 
@@ -368,81 +370,89 @@ class GithubPluginShell extends Shell {
 		}
 	}
 
-	/**
-	 * Loads a list of plugins in the current app.
-	 *
-	 * @return void
-	 * @author John David Anderson
-	 */
+/**
+ * Loads a list of plugins in the current app.
+ *
+ * @return array
+ * @author John David Anderson
+ */
 	function __listPlugins() {
 		$pluginsFolder = new Folder(APP . 'plugins');
 		$filesAndDirectories = $pluginsFolder->ls(true, true);
 		return $filesAndDirectories[0];
 	}
 
-	/**
-	 * List all the plugins in the github plugin account
-	 *
-	 * @return void
-	 * @author Jose Diaz-Gonzalez
-	 */
+/**
+ * List all the plugins in the github plugin account
+ *
+ * @return array
+ * @author Jose Diaz-Gonzalez
+ */
 	function __listServerPlugins() {
 		$githubServer = "http://github.com/api/v2/xml/";
 		$githubUser = 'cakephp-plugin-provider';
-		$xmlResponse = new Xml(
-			$this->Socket->get(
-				$githubServer . 'repos/show/' . $githubUser));
-		$arrayResponse = Set::reverse($xmlResponse);
-		return $arrayResponse['Repositories']['Repository'];
+
+		Cache::set(array('duration' => '+7 days'));
+		if (($pluginList = Cache::read('Plugins.server.list.' . date('W-Y'))) === false) {
+			$xmlResponse = new Xml($this->Socket->get("{$githubServer}repos/show/{$githubUser}"));
+			$pluginList = Set::reverse($xmlResponse);
+			Cache::set(array('duration' => '+7 days'));
+			Cache::write('Plugins.server.list.' . date('W-Y'), $pluginList);
+		}
+
+		return $pluginList['Repositories']['Repository'];
 	}
 
-	/**
-	 * Returns the url of the original repository
-	 *
-	 * @return string
-	 * @author Jose Diaz-Gonzalez
-	 **/
+/**
+ * Returns the url of the original repository
+ *
+ * @param string $repositoryName
+ * @return string
+ * @author Jose Diaz-Gonzalez
+ **/
 	function __findOriginalRepository($repositoryName) {
 		$githubServer = "http://github.com/api/v2/xml/";
 		$maintainer = 'cakephp-plugin-provider';
-		$xmlResponse = new Xml(
-			$this->Socket->get(
-				"{$githubServer}repos/show/{$maintainer}/{$repositoryName}/network"));
-		$arrayResponse = Set::reverse($xmlResponse);
-		foreach ($arrayResponse['Network']['Network'] as $repository) {
-			if ($repository['fork']['value'] === 'false') {
-				$maintainer = $repository['owner'];
-				$repositoryName = $repository['name'];
-				break;
+
+		Cache::set(array('duration' => '+7 days'));
+		if (($originalRepository = Cache::read("Plugins.server.{$repositoryName}.original" . date('W-Y'))) === false) {
+			$pluginNetwork = $this->__getNetwork($githubServer, $maintainer, $repositoryName);
+
+			foreach ($pluginNetwork['Network']['Network'] as $repository) {
+				if ($repository['fork']['value'] === 'false') {
+					$maintainer = $repository['owner'];
+					$repositoryName = $repository['name'];
+					break;
+				}
 			}
+			$gitRepository = "git://github.com/{$githubUser}/{$repositoryName}.git";
+			Cache::set(array('duration' => '+7 days'));
+			Cache::write("Plugins.server.{$repositoryName}.original" . date('W-Y'), $gitRepository);
 		}
-		return "git://github.com/{$githubUser}/{$repositoryName}.git";
+
+		return $originalRepository;
 	}
 
 /**
  * Returns the url of the zip containing the latest repository commit
  *
- * @return string
+ * @param string $repositoryName
+ * @return array
  * @author Jose Diaz-Gonzalez
  **/
 	function __findZipURL($repositoryName) {
 		$githubServer = 'http://github.com/api/v2/xml/';
 		$maintainer = 'cakephp-plugin-provider';
 
-		$xmlResponse = new Xml(
-			$this->Socket->get(
-				"{$githubServer}repos/show/{$maintainer}/{$repositoryName}/network"));
-		$arrayResponse = Set::reverse($xmlResponse);
+		$pluginNetwork = $this->__getNetwork($githubServer, $maintainer, $repositoryName);
 
-		foreach ($arrayResponse['Network']['Network'] as $repository) {
+		foreach ($pluginNetwork['Network']['Network'] as $repository) {
 			if ($repository['fork']['value'] === 'false') {
 				$maintainer = $repository['owner'];
 				$repositoryName = $repository['name'];
 				break;
 			}
 		}
-
-		$link = "http://github.com/{$maintainer}/{$repositoryName}/zipball/master";
 
 		$branches = $this->__findBranches($githubServer, $maintainer, $repositoryName, true);
 
@@ -455,11 +465,46 @@ class GithubPluginShell extends Shell {
 		}
 
 		// The following might need to be downloaded via the socket class in order to ensure that the zip is created
-		// $zipLink = "http://waitdownload.github.com/{$maintainer}-{$repositoryName}-{$useBranch}.zip";
-		$zipLink = "http://download.github.com/{$maintainer}-{$repositoryName}-{$useBranch}.zip";
-		return $zipLink;
+		$response = array();
+
+		$response['maintainer'] = $maintainer;
+		$response['repositoryName'] = $repositoryName;
+		$response['useBranch'] = $useBranch;
+		$response['zipball'] = "http://github.com/{$maintainer}/{$repositoryName}/zipball/master";
+		$response['waitdownload'] = "http://waitdownload.github.com/{$maintainer}-{$repositoryName}-{$useBranch}.zip";
+
+		$this->out("Hardcore Archiving...");
+		$xmlResponse = $this->Socket->get($response['zipball']);
+		$this->out("Redirecting...");
+		$xmlResponse = $this->Socket->get($response['waitdownload'] );
+
+		$response['download'] = "http://download.github.com/{$maintainer}-{$repositoryName}-{$useBranch}.zip";
+		
+		return $response;
 	}
-	
+
+/**
+ * Returns an array containing a repository's network
+ *
+ * @param string $githubServer
+ * @param string $maintainer
+ * @param string $repositoryName
+ * @return array
+ * @author Jose Diaz-Gonzalez
+ **/
+	function __getNetwork($githubServer, $maintainer, $repositoryName) {
+		Cache::set(array('duration' => '+7 days'));
+		if (($pluginNetwork = Cache::read("Plugins.server.{$repositoryName}.network" . date('W-Y'))) === false) {
+			$xmlResponse = new Xml(
+				$this->Socket->get(
+					"{$githubServer}repos/show/{$maintainer}/{$repositoryName}/network"));
+			$pluginNetwork = Set::reverse($xmlResponse);
+			Cache::set(array('duration' => '+7 days'));
+			Cache::write("Plugins.server.{$repositoryName}.network" . date('W-Y'), $pluginNetwork);
+		}
+		return $pluginNetwork;
+	}
+
 /**
  * Returns an array of containing an array of all the branch names
  * and an array containing the latest branch commit hash
@@ -471,26 +516,53 @@ class GithubPluginShell extends Shell {
  * @author Jose Diaz-Gonzalez
  **/
 	function __findBranches($server, $maintainer, $repositoryName, $master = false) {
-		$xmlResponse = new Xml(
-			$this->Socket->get(
-				"{$server}repos/show/{$maintainer}/{$repositoryName}/branches"));
-		$arrayResponse = Set::reverse($xmlResponse);
+		Cache::set(array('duration' => '+7 days'));
+		if (($branches = Cache::read("Plugins.server.{$repositoryName}.branches" . date('W-Y'))) === false) {
+			$xmlResponse = new Xml(
+				$this->Socket->get(
+					"{$server}repos/show/{$maintainer}/{$repositoryName}/branches"));
+			$arrayResponse = Set::reverse($xmlResponse);
 
-		$response = array();
-		$response['branches'] = array_keys($arrayResponse['Branches']);
-		$response['hash'] = $arrayResponse['Branches'];
-		$response['master'] = false;
+			$branches = array();
+			$branches['branches'] = array_keys($arrayResponse['Branches']);
+			$branches['hash'] = $arrayResponse['Branches'];
+			$branches['master'] = false;
 
-		if ($master) {
-			foreach ($response['branches'] as $branch) {
-				if ($branch == 'master') {
-					$response['master'] = true;
-					break;
+			if ($master) {
+				foreach ($branches['branches'] as $branch) {
+					if ($branch == 'master') {
+						$branches['master'] = true;
+						break;
+					}
 				}
 			}
+
+			Cache::set(array('duration' => '+7 days'));
+			Cache::write("Plugins.server.{$repositoryName}.branches" . date('W-Y'), $branches);
 		}
 
-		return $response;
+		return $branches;
+	}
+
+/**
+ * Checks to see if the temporary plugin folder exists
+ * and creates it if it does not
+ *
+ * @return void
+ * @author Jose Diaz-Gonzalez
+ **/
+	function __checkPluginFolder() {
+		$tempHandler = new Folder();
+		$tempPath = trim(TMP);
+		$pluginPath = trim(TMP . 'plugins');
+
+		$tempHandler->cd($tempPath);
+		$temp = $tempHandler->ls();
+		foreach ($temp[0] as $tempFolder) {
+			if ($tempFolder !== 'plugins') {
+				$tempHandler->create($pluginPath);
+			}
+		}
 	}
 }
 ?>

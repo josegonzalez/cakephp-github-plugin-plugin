@@ -291,7 +291,7 @@ class GithubPluginShell extends Shell {
 	 */
 	function __listServerPlugins() {
 		$githubServer = "http://github.com/api/v2/xml/";
-		$githubUser = 'josegonzalez';
+		$githubUser = 'cakephp-plugin-provider';
 		$xmlResponse = new Xml(
 			$this->Socket->get(
 				$githubServer . 'repos/show/' . $githubUser));

@@ -47,7 +47,7 @@ class GithubPluginShell extends Shell {
 
 		while (empty($this->command)) {
 			$this->out("Github Plugin Server");
-			$this->out("---------------------------------------------------------------");
+			$this->hr();
 			$this->out("[L]ist Installed Plugins");
 			$this->out("[V]iew Available Plugins");
 			$this->out("[S]earch Available Plugins");

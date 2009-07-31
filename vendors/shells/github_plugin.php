@@ -39,6 +39,8 @@ class GithubPluginShell extends Shell {
  * @author Jose Diaz-Gonzalez
  */
 	function __run() {
+		$githubUser = 'cakephp-plugin-provider';
+
 		$validCommands = array('l', 'v', 'f', 'g', 'z', 'p', 'u', 'q');
 
 		while (empty($this->command)) {
@@ -51,6 +53,7 @@ class GithubPluginShell extends Shell {
 			$this->out("[Z]ip Install Plugin from an archive");
 			$this->out("[P]ull all Plugin Submodule Updates");
 			$this->out("[U]pdate a specific Plugin Submodule");
+			$this->out("[C]ache Configuration");
 			$this->out("[Q]uit");
 			$temp = $this->in("What command would you like to perform?", $validCommands, 'i');
 			if (in_array(strtolower($temp), $validCommands)) {
@@ -65,16 +68,16 @@ class GithubPluginShell extends Shell {
 				$this->List->installed();
 				break;
 			case 'v' :
-				$this->List->available();
+				$this->List->available($githubUser);
 				break;
 			case 'f' :
 				$this->Find->execute();
 				break;
 			case 'g' :
-				$this->Install->git();
+				$this->Install->git($githubUser);
 				break;
 			case 'z' :
-				$this->Install->zip();
+				$this->Install->zip($githubUser);
 				break;
 			case 'p' :
 				$this->Update->all();
@@ -82,6 +85,8 @@ class GithubPluginShell extends Shell {
 			case 'u' :
 				$this->Update->specific();
 				break;
+			case 'c' :
+				$this->Cache->execute();
 			case 'q' :
 				$this->out(__("Exit", true));
 				$this->_stop();

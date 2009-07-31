@@ -11,16 +11,16 @@ class InstallTask extends Shell {
 	function execute() {
 	}
 
-	function git() {
+	function git($maintainer = null) {
 		$this->Socket = new HttpSocket();
 
-		$this->__doGitInstall();
+		$this->__doGitInstall($maintainer);
 	}
 
-	function zip() {
+	function zip($maintainer = null) {
 		$this->Socket = new HttpSocket();
 
-		$this->__doZipInstall();
+		$this->__doZipInstall($maintainer);
 	}
 
 /**
@@ -29,9 +29,9 @@ class InstallTask extends Shell {
  * @return void
  * @author Jose Diaz-Gonzalez
  */
-	function __doGitInstall() {
+	function __doGitInstall($maintainer = null) {
 		$validCommands = array();
-		$availablePlugins = $this->__listServerPlugins();
+		$availablePlugins = $this->__listServerPlugins($maintainer);
 
 		foreach ($availablePlugins as $key => $plugin) {
 			$name = str_replace('-', '_', $plugin['name']);
@@ -56,7 +56,7 @@ class InstallTask extends Shell {
 				// So now we actually have to install this plugin...
 
 				// Find the original Repository if possible
-				$repoURL = $this->__findOriginalRepository($availablePlugins[$enteredPlugin-1]['name']);
+				$repoURL = $this->__findOriginalRepository($availablePlugins[$enteredPlugin-1]['name'], $maintainer);
 
 				// Get the name under which the user would like to place this plugin
 				$pluginName = $this->in(__("Enter a name for this plugin or 'q' to exit", true), null, 'q');
@@ -67,7 +67,7 @@ class InstallTask extends Shell {
 				} else {
 
 					// Check if this app isn't the root of the git project
-					$topLevelDirectory = $this->in(__("If you aren't running this from the toplevel of the working tree, specify the full toplevel path. Press enter if this is the toplevel."), null, '');
+					$topLevelDirectory = $this->in(__("If you aren't running this from the toplevel of the working tree, specify the full toplevel path. Leave off trailing slashes. Press enter if this is the toplevel."), null, '');
 
 					if ($topLevelDirectory !== null) {
 
@@ -102,14 +102,14 @@ class InstallTask extends Shell {
  * @return void
  * @author Jose Diaz-Gonzalez
  */
-	function __doZipInstall() {
+	function __doZipInstall($maintainer = null) {
 		$validCommands = array();
 
 		// Make sure the temporary plugin folder exists
 		$this->__checkPluginFolder();
 
 		$this->out("Fetching list of all Plugins...");
-		$availablePlugins = $this->__listServerPlugins();
+		$availablePlugins = $this->__listServerPlugins($maintainer);
 
 		foreach ($availablePlugins as $key => $plugin) {
 			$name = str_replace('-', '_', $plugin['name']);
@@ -135,7 +135,7 @@ class InstallTask extends Shell {
 
 				// Find the original Repository if possible
 				$this->out("Fetching the Repository Zip URL...");
-				$response = $this->__findZipURL($availablePlugins[$enteredPlugin-1]['name']);
+				$response = $this->__findZipURL($availablePlugins[$enteredPlugin-1]['name'], $maintainer);
 				$repoPath = $response['maintainer'] . '-' . $response['repositoryName'] . '-' . $response['useBranch'];
 				$zipURL = $response['download'];
 
@@ -187,13 +187,12 @@ class InstallTask extends Shell {
  * @return array
  * @author Jose Diaz-Gonzalez
  */
-	function __listServerPlugins() {
+	function __listServerPlugins($maintainer = null) {
 		$githubServer = "http://github.com/api/v2/xml/";
-		$githubUser = 'cakephp-plugin-provider';
 
 		Cache::set(array('duration' => '+7 days'));
 		if (($pluginList = Cache::read('Plugins.server.list.' . date('W-Y'))) === false) {
-			$xmlResponse = new Xml($this->Socket->get("{$githubServer}repos/show/{$githubUser}"));
+			$xmlResponse = new Xml($this->Socket->get("{$githubServer}repos/show/{$maintainer}"));
 			$pluginList = Set::reverse($xmlResponse);
 			Cache::set(array('duration' => '+7 days'));
 			Cache::write('Plugins.server.list.' . date('W-Y'), $pluginList);
@@ -209,9 +208,8 @@ class InstallTask extends Shell {
  * @return string
  * @author Jose Diaz-Gonzalez
  **/
-	function __findOriginalRepository($repositoryName) {
+	function __findOriginalRepository($repositoryName, $maintainer = null) {
 		$githubServer = "http://github.com/api/v2/xml/";
-		$maintainer = 'cakephp-plugin-provider';
 
 		Cache::set(array('duration' => '+7 days'));
 		if (($originalRepository = Cache::read("Plugins.server.{$repositoryName}.original" . date('W-Y'))) === false) {
@@ -224,7 +222,7 @@ class InstallTask extends Shell {
 					break;
 				}
 			}
-			$gitRepository = "git://github.com/{$githubUser}/{$repositoryName}.git";
+			$gitRepository = "git://github.com/{$maintainer}/{$repositoryName}.git";
 			Cache::set(array('duration' => '+7 days'));
 			Cache::write("Plugins.server.{$repositoryName}.original" . date('W-Y'), $gitRepository);
 		}
@@ -282,9 +280,8 @@ class InstallTask extends Shell {
  * @return array
  * @author Jose Diaz-Gonzalez
  **/
-	function __findZipURL($repositoryName) {
+	function __findZipURL($repositoryName, $maintainer) {
 		$githubServer = 'http://github.com/api/v2/xml/';
-		$maintainer = 'cakephp-plugin-provider';
 
 		$pluginNetwork = $this->__getNetwork($githubServer, $maintainer, $repositoryName);
 

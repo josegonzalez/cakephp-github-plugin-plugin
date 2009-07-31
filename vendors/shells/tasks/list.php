@@ -20,7 +20,7 @@ class ListTask extends Shell {
 	function available() {
 		$this->Socket = new HttpSocket();
 
-		$this->__doListAvailable();
+		$this->__doListAvailable($maintainer);
 	}
 
 /**
@@ -42,9 +42,9 @@ class ListTask extends Shell {
  * @return void
  * @author Jose Diaz-Gonzalez
  */
-	function __doListAvailable() {
+	function __doListAvailable($maintainer = null) {
 		$this->out("\nThis is a list of currently active plugins on the server.");
-		$availablePlugins = $this->__listServerPlugins();
+		$availablePlugins = $this->__listServerPlugins($maintainer);
 		foreach ($availablePlugins as $key => $plugin) {
 			$name = str_replace('-', '_', $plugin['name']);
 			$name = Inflector::humanize($name);
@@ -73,13 +73,12 @@ class ListTask extends Shell {
  * @return array
  * @author Jose Diaz-Gonzalez
  */
-	function __listServerPlugins() {
+	function __listServerPlugins($maintainer = null) {
 		$githubServer = "http://github.com/api/v2/xml/";
-		$githubUser = 'cakephp-plugin-provider';
 
 		Cache::set(array('duration' => '+7 days'));
 		if (($pluginList = Cache::read('Plugins.server.list.' . date('W-Y'))) === false) {
-			$xmlResponse = new Xml($this->Socket->get("{$githubServer}repos/show/{$githubUser}"));
+			$xmlResponse = new Xml($this->Socket->get("{$githubServer}repos/show/{$maintainer}"));
 			$pluginList = Set::reverse($xmlResponse);
 			Cache::set(array('duration' => '+7 days'));
 			Cache::write('Plugins.server.list.' . date('W-Y'), $pluginList);

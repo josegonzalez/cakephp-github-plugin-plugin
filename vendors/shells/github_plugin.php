@@ -11,7 +11,7 @@ class GithubPluginShell extends Shell {
  *
  * @var string
  **/
-	var $tasks = array('List', 'View', 'Search', 'GitInstall', 'ZipInstall', 'UpdateAll', 'UpdateSpecific');
+	var $tasks = array('List', 'Find', 'Install', 'Update');
 /**
  * Main shell logic.
  *
@@ -39,14 +39,14 @@ class GithubPluginShell extends Shell {
  * @author Jose Diaz-Gonzalez
  */
 	function __run() {
-		$validCommands = array('l', 'v', 's', 'g', 'z', 'p', 'u', 'q');
+		$validCommands = array('l', 'v', 'f', 'g', 'z', 'p', 'u', 'q');
 
 		while (empty($this->command)) {
 			$this->out("Github Plugin Server");
 			$this->hr();
 			$this->out("[L]ist Installed Plugins");
 			$this->out("[V]iew Available Plugins");
-			$this->out("[S]earch Available Plugins");
+			$this->out("[F]ind a specific Plugin");
 			$this->out("[G]it Install Plugin as Submodule");
 			$this->out("[Z]ip Install Plugin from an archive");
 			$this->out("[P]ull all Plugin Submodule Updates");
@@ -62,25 +62,25 @@ class GithubPluginShell extends Shell {
 
 		switch ($this->command) {
 			case 'l' :
-				$this->List->execute();
+				$this->List->installed();
 				break;
 			case 'v' :
-				$this->View->execute();
+				$this->List->available();
 				break;
-			case 's' :
-				$this->Search->execute();
+			case 'f' :
+				$this->Find->execute();
 				break;
 			case 'g' :
-				$this->GitInstall->execute();
+				$this->Install->git();
 				break;
 			case 'z' :
-				$this->ZipInstall->execute();
+				$this->Install->zip();
 				break;
 			case 'p' :
-				$this->UpdateAll->execute();
+				$this->Update->all();
 				break;
 			case 'u' :
-				$this->UpdateSpecific->execute();
+				$this->Update->specific();
 				break;
 			case 'q' :
 				$this->out(__("Exit", true));

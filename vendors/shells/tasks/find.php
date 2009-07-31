@@ -1,6 +1,6 @@
 <?php
 App::import(array('HttpSocket', 'Xml'));
-class SearchTask extends Shell {
+class FindTask extends Shell {
 
 /**
  * HttpSocket instance.
@@ -8,20 +8,19 @@ class SearchTask extends Shell {
  */
 	var $Socket = null;
 
-
 	function execute() {
 		$this->Socket = new HttpSocket();
 
-		$this->__doSearch();
+		$this->__doFind();
 	}
 
 /**
- * Search all available plugins
+ * Find a specific plugin
  *
  * @return void
  * @author Jose Diaz-Gonzalez
  **/
-	function __doSearch() {
+	function __doFind() {
 		$query = $this->in(__("Enter a search term or 'q' or nothing to exit", true), null, 'q');
 		$this->out("Grabbing all plugins...");
 		$availablePlugins = $this->__listServerPlugins();

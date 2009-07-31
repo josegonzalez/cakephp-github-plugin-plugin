@@ -1,9 +1,34 @@
 <?php
 App::import(array('Folder'));
-class UpdateSpecificTask extends Shell {
+class UpdateTask extends Shell {
 
 	function execute() {
+		//Todo
+	}
+
+	function all() {
+		$this->__doUpdateAll();
+	}
+
+	function specific() {
 		$this->__doUpdateSpecific();
+	}
+/**
+ * Pull the updates for all plugin submodules
+ *
+ * @return void
+ * @author Jose Diaz-Gonzalez
+ **/
+	function __doUpdateAll() {
+		$this->out("\nUpdating submodules...\n");
+		$installedPlugins = $this->__listPlugins();
+
+		foreach ($installedPlugins as $key => $plugin) {
+			$this->out(Inflector::humanize($plugin) . " Plugin");
+			$this->out(shell_exec("cd " . $this->params['working'] . "/plugins/{$installedPlugins[$key]} ; git remote update "));
+			$this->out(shell_exec("cd " . $this->params['working'] . "/plugins/{$installedPlugins[$key]} ; git merge origin/master "));
+		}
+		$this->out("Remember to commit all wanted changes.");
 	}
 
 /**

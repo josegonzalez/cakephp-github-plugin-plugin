@@ -1,4 +1,5 @@
 <?php
+App::import(array('HttpSocket', 'File', 'Folder', 'Xml'));
 /**
  * Github Plugin management shell.
  *
@@ -7,11 +8,11 @@
 class GithubPluginShell extends Shell {
 
 /**
- * Tasks that are attached to this shell
- *
+ * HttpSocket instance.
  * @var string
- **/
-	var $tasks = array('List', 'Find', 'Install', 'Update');
+ */
+	var $Socket = null;
+
 /**
  * Main shell logic.
  *
@@ -24,6 +25,8 @@ class GithubPluginShell extends Shell {
 			$this->serverUri = $this->params['server'];
 			$this->out('Using specified server: ' . $this->serverUri);
 		}
+
+		$this->Socket = new HttpSocket();
 
 		if(!empty($this->command)) {
 			$this->command = substr($this->command, 0, 1);
@@ -39,21 +42,18 @@ class GithubPluginShell extends Shell {
  * @author Jose Diaz-Gonzalez
  */
 	function __run() {
-		$githubUser = 'cakephp-plugin-provider';
-
-		$validCommands = array('l', 'v', 'f', 'g', 'z', 'p', 'u', 'q');
+		$validCommands = array('l', 'v', 's', 'g', 'z', 'p', 'u', 'q');
 
 		while (empty($this->command)) {
 			$this->out("Github Plugin Server");
 			$this->hr();
 			$this->out("[L]ist Installed Plugins");
 			$this->out("[V]iew Available Plugins");
-			$this->out("[F]ind a specific Plugin");
+			$this->out("[S]earch Available Plugins");
 			$this->out("[G]it Install Plugin as Submodule");
 			$this->out("[Z]ip Install Plugin from an archive");
 			$this->out("[P]ull all Plugin Submodule Updates");
 			$this->out("[U]pdate a specific Plugin Submodule");
-			$this->out("[C]ache Configuration");
 			$this->out("[Q]uit");
 			$temp = $this->in("What command would you like to perform?", $validCommands, 'i');
 			if (in_array(strtolower($temp), $validCommands)) {
@@ -65,28 +65,26 @@ class GithubPluginShell extends Shell {
 
 		switch ($this->command) {
 			case 'l' :
-				$this->List->installed();
+				$this->__doList();
 				break;
 			case 'v' :
-				$this->List->available($githubUser);
+				$this->__doView();
 				break;
-			case 'f' :
-				$this->Find->execute();
+			case 's' :
+				$this->__doSearch();
 				break;
 			case 'g' :
-				$this->Install->git($githubUser);
+				$this->__doSubmoduleInstall();
 				break;
 			case 'z' :
-				$this->Install->zip($githubUser);
+				$this->__doZipInstall();
 				break;
 			case 'p' :
-				$this->Update->all();
+				$this->__doPull();
 				break;
 			case 'u' :
-				$this->Update->specific();
+				$this->__doUpdate();
 				break;
-			case 'c' :
-				$this->Cache->execute();
 			case 'q' :
 				$this->out(__("Exit", true));
 				$this->_stop();

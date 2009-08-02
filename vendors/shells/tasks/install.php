@@ -66,29 +66,30 @@ class InstallTask extends Shell {
 					$this->_stop();
 				} else {
 
-					// Check if this app isn't the root of the git project
-					$topLevelDirectory = $this->in(__("If you aren't running this from the toplevel of the working tree, specify the full toplevel path. Leave off trailing slashes. Press enter if this is the toplevel."), null, '');
-
-					if ($topLevelDirectory !== null) {
-
+					if (($topLevelDirectory = Cache::read('Plugins.application.topDirectory')) === false) {
+						// Check if this app isn't the root of the git project
+						$topLevelDirectory = $this->in(__("If you aren't running this from the toplevel of the working tree, specify the full toplevel path. Leave off trailing slashes. Press enter if this is the toplevel."), null, '');
+						if ($topLevelDirectory !== null) {
+							Cache::write('Plugins.application.topDirectory', $topLevelDirectory);
+						} else {
+							Cache::write('Plugins.application.topDirectory', APP);
+						}
+					}
+					if (($pluginRelativePath = Cache::read('Plugins.application.pluginPath')) === false) {
 						// See if there are any special paths for this plugin
 						$pluginRelativePath = $this->in(__("What is the relative path of the plugin folder in respect to the toplevel of the working tree? Include the directory of the plugins folder, and leave off the beginning and trailing slash."), null, '');
 						if ($pluginRelativePath !== null) {
-							$this->out("Adding Plugin Submodule to {$topLevelDirectory}/{$pluginRelativePath}/{$pluginName}...");
-							$this->out(shell_exec("cd {$topLevelDirectory} ; git submodule add {$repoURL} {$pluginRelativePath}/{$pluginName}"));
-							$this->out("Initializing Plugin Submodule...");
-							$this->out(shell_exec("cd {$topLevelDirectory} ; git submodule init"));
-							$this->out("Updating Plugin Submodule...");
-							$this->out(shell_exec("cd {$topLevelDirectory} ; git submodule update"));
+							Cache::write('Plugins.application.pluginPath', $pluginRelativePath);
+						} else {
+							Cache::write('Plugins.application.pluginPath', 'plugins');
 						}
-					} else {
-						$this->out("Adding Plugin Submodule to plugins/{$pluginName}...");
-						$this->out(shell_exec("git submodule add {$repoURL} plugins/{$pluginName}"));
-						$this->out("Initializing Plugin Submodule...");
-						$this->out(shell_exec("git submodule init"));
-						$this->out("Updating Plugin Submodule...");
-						$this->out(shell_exec("git submodule update"));
 					}
+					$this->out("Adding Plugin Submodule to {$topLevelDirectory}/{$pluginRelativePath}/{$pluginName}...");
+					$this->out(shell_exec("cd {$topLevelDirectory} ; git submodule add {$repoURL} {$pluginRelativePath}/{$pluginName}"));
+					$this->out("Initializing Plugin Submodule...");
+					$this->out(shell_exec("cd {$topLevelDirectory} ; git submodule init"));
+					$this->out("Updating Plugin Submodule...");
+					$this->out(shell_exec("cd {$topLevelDirectory} ; git submodule update"));
 				}
 			} else {
 				$enteredPlugin = null;

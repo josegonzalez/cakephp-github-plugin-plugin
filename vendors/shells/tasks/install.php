@@ -12,12 +12,14 @@ class InstallTask extends Shell {
 	}
 
 	function git($maintainer = null) {
+		$maintainer = ($maintainer === null) ? 'cakephp-plugin-provider' : $maintainer;
 		$this->Socket = new HttpSocket();
 
 		$this->__doGitInstall($maintainer);
 	}
 
 	function zip($maintainer = null) {
+		$maintainer = ($maintainer === null) ? 'cakephp-plugin-provider' : $maintainer;
 		$this->Socket = new HttpSocket();
 
 		$this->__doZipInstall($maintainer);
@@ -30,6 +32,7 @@ class InstallTask extends Shell {
  * @author Jose Diaz-Gonzalez
  */
 	function __doGitInstall($maintainer = null) {
+		$maintainer = ($maintainer === null) ? 'cakephp-plugin-provider' : $maintainer;
 		$validCommands = array();
 		$availablePlugins = $this->__listServerPlugins($maintainer);
 
@@ -104,6 +107,7 @@ class InstallTask extends Shell {
  * @author Jose Diaz-Gonzalez
  */
 	function __doZipInstall($maintainer = null) {
+		$maintainer = ($maintainer === null) ? 'cakephp-plugin-provider' : $maintainer;
 		$validCommands = array();
 
 		// Make sure the temporary plugin folder exists
@@ -189,7 +193,9 @@ class InstallTask extends Shell {
  * @author Jose Diaz-Gonzalez
  */
 	function __listServerPlugins($maintainer = null) {
+		$maintainer = ($maintainer === null) ? 'cakephp-plugin-provider' : $maintainer;
 		$githubServer = "http://github.com/api/v2/xml/";
+		$pluginList = array();
 
 		Cache::set(array('duration' => '+7 days'));
 		if (($pluginList = Cache::read('Plugins.server.list.' . date('W-Y'))) === false) {
@@ -210,7 +216,9 @@ class InstallTask extends Shell {
  * @author Jose Diaz-Gonzalez
  **/
 	function __findOriginalRepository($repositoryName, $maintainer = null) {
+		$maintainer = ($maintainer === null) ? 'cakephp-plugin-provider' : $maintainer;
 		$githubServer = "http://github.com/api/v2/xml/";
+		$originalRepository = array();
 
 		Cache::set(array('duration' => '+7 days'));
 		if (($originalRepository = Cache::read("Plugins.server.{$repositoryName}.original" . date('W-Y'))) === false) {
@@ -241,6 +249,9 @@ class InstallTask extends Shell {
  * @author Jose Diaz-Gonzalez
  **/
 	function __getNetwork($githubServer, $maintainer, $repositoryName) {
+		$maintainer = ($maintainer === null) ? 'cakephp-plugin-provider' : $maintainer;
+		$pluginNetwork = array();
+
 		Cache::set(array('duration' => '+7 days'));
 		if (($pluginNetwork = Cache::read("Plugins.server.{$repositoryName}.network" . date('W-Y'))) === false) {
 			$xmlResponse = new Xml(
@@ -282,6 +293,7 @@ class InstallTask extends Shell {
  * @author Jose Diaz-Gonzalez
  **/
 	function __findZipURL($repositoryName, $maintainer) {
+		$maintainer = ($maintainer === null) ? 'cakephp-plugin-provider' : $maintainer;
 		$githubServer = 'http://github.com/api/v2/xml/';
 
 		$pluginNetwork = $this->__getNetwork($githubServer, $maintainer, $repositoryName);
@@ -333,7 +345,10 @@ class InstallTask extends Shell {
  * @return array
  * @author Jose Diaz-Gonzalez
  **/
-	function __findBranches($server, $maintainer, $repositoryName, $master = false) {
+	function __findBranches($server, $maintainer = null, $repositoryName, $master = false) {
+		$maintainer = ($maintainer === null) ? 'cakephp-plugin-provider' : $maintainer;
+		$branches = array();
+
 		Cache::set(array('duration' => '+7 days'));
 		if (($branches = Cache::read("Plugins.server.{$repositoryName}.branches" . date('W-Y'))) === false) {
 			$xmlResponse = new Xml(

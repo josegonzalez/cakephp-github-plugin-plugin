@@ -53,13 +53,14 @@ class FindTask extends Shell {
  * @return array
  * @author Jose Diaz-Gonzalez
  */
-	function __listServerPlugins() {
+	function __listServerPlugins($maintainer = null) {
 		$githubServer = "http://github.com/api/v2/xml/";
-		$githubUser = 'cakephp-plugin-provider';
+		$maintainer = ($maintainer == null) ? 'cakephp-plugin-provider' : $maintainer;
+		$pluginList = array();
 
 		Cache::set(array('duration' => '+7 days'));
 		if (($pluginList = Cache::read('Plugins.server.list.' . date('W-Y'))) === false) {
-			$xmlResponse = new Xml($this->Socket->get("{$githubServer}repos/show/{$githubUser}"));
+			$xmlResponse = new Xml($this->Socket->get("{$githubServer}repos/show/{$maintainer}"));
 			$pluginList = Set::reverse($xmlResponse);
 			Cache::set(array('duration' => '+7 days'));
 			Cache::write('Plugins.server.list.' . date('W-Y'), $pluginList);

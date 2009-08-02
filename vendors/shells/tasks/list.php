@@ -17,7 +17,8 @@ class ListTask extends Shell {
 		$this->__doListInstalled();
 	}
 
-	function available() {
+	function available($maintainer = null) {
+		$maintainer = ($maintainer == null) ? 'cakephp-plugin-provider' : $maintainer;
 		$this->Socket = new HttpSocket();
 
 		$this->__doListAvailable($maintainer);
@@ -43,6 +44,8 @@ class ListTask extends Shell {
  * @author Jose Diaz-Gonzalez
  */
 	function __doListAvailable($maintainer = null) {
+		$maintainer = ($maintainer == null) ? 'cakephp-plugin-provider' : $maintainer;
+
 		$this->out("\nThis is a list of currently active plugins on the server.");
 		$availablePlugins = $this->__listServerPlugins($maintainer);
 		foreach ($availablePlugins as $key => $plugin) {
@@ -75,6 +78,8 @@ class ListTask extends Shell {
  */
 	function __listServerPlugins($maintainer = null) {
 		$githubServer = "http://github.com/api/v2/xml/";
+		$maintainer = ($maintainer == null) ? 'cakephp-plugin-provider' : $maintainer;
+		$pluginList = array();
 
 		Cache::set(array('duration' => '+7 days'));
 		if (($pluginList = Cache::read('Plugins.server.list.' . date('W-Y'))) === false) {

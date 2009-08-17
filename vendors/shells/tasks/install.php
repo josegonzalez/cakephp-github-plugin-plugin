@@ -71,20 +71,23 @@ class InstallTask extends Shell {
 
 					if (($topLevelDirectory = Cache::read('Plugins.application.topDirectory')) === false) {
 						// Check if this app isn't the root of the git project
-						$topLevelDirectory = $this->in(__("If you aren't running this from the toplevel of the working tree, specify the full toplevel path. Leave off trailing slashes. Press enter if this is the toplevel."), null, '');
-						if ($topLevelDirectory !== null) {
+						$topLevelDirectory = $this->in(__("If you aren't running this from the toplevel of the working tree, specify the full toplevel path. Leave off trailing slashes. Press enter if this is the toplevel."), null, ROOT);
+						if ($topLevelDirectory !== '') {
 							Cache::write('Plugins.application.topDirectory', $topLevelDirectory);
 						} else {
-							Cache::write('Plugins.application.topDirectory', APP);
+							$topLevelDirectory = ROOT;
+							Cache::write('Plugins.application.topDirectory', ROOT);
 						}
 					}
+					$this->out($topLevelDirectory);
 					if (($pluginRelativePath = Cache::read('Plugins.application.pluginPath')) === false) {
 						// See if there are any special paths for this plugin
-						$pluginRelativePath = $this->in(__("What is the relative path of the plugin folder in respect to the toplevel of the working tree? Include the directory of the plugins folder, and leave off the beginning and trailing slash."), null, '');
-						if ($pluginRelativePath !== null) {
+						$pluginRelativePath = $this->in(__("What is the relative path of the plugin folder in respect to the toplevel of the working tree? Include the directory of the plugins folder, and leave off the beginning and trailing slash."), null, 'app/plugins');
+						if ($pluginRelativePath !== '') {
 							Cache::write('Plugins.application.pluginPath', $pluginRelativePath);
 						} else {
-							Cache::write('Plugins.application.pluginPath', 'plugins');
+							$pluginRelativePath = 'app/plugins';
+							Cache::write('Plugins.application.pluginPath', 'app/plugins');
 						}
 					}
 					$this->out("Adding Plugin Submodule to {$topLevelDirectory}/{$pluginRelativePath}/{$pluginName}...");
@@ -231,9 +234,9 @@ class InstallTask extends Shell {
 					break;
 				}
 			}
-			$gitRepository = "git://github.com/{$maintainer}/{$repositoryName}.git";
+			$originalRepository = "git://github.com/{$maintainer}/{$repositoryName}.git";
 			Cache::set(array('duration' => '+7 days'));
-			Cache::write("Plugins.server.{$repositoryName}.original" . date('W-Y'), $gitRepository);
+			Cache::write("Plugins.server.{$repositoryName}.original" . date('W-Y'), $originalRepository);
 		}
 
 		return $originalRepository;

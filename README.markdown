@@ -5,8 +5,8 @@ This plugin provides an easy way to install plugins from a github account (prede
 - git must be installed and configured on the server in order to use the git functionality (you can still install plugins from archives!)
 
 ## Installation
-- Clone from github : in your plugin directory type `git clone git://github.com/josegonzalez/commentable-behavior.git github_plugin`
-- Add as a git submodule : in your plugin directory type `git submodule add git://github.com/josegonzalez/commentable-behavior.git github_plugin`
+- Clone from github : in your plugin directory type `git clone git://github.com/josegonzalez/cakephp-github-plugin-plugin.git github_plugin`
+- Add as a git submodule : in your plugin directory type `git submodule add git://github.com/josegonzalez/cakephp-github-plugin-plugin.git github_plugin`
 - Download an archive from github and extract it in `/plugins/github_plugin`
 
 ## Features
